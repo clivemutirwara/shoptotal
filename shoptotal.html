@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop Total</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        :root {
+            --color-1: #c3c2d0;
+            --color-2: #d7d6e6;
+            --color-3: #e2f1e4;
+            --color-4: #2a0e40;
+            --color-5: #7f7f7f;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Lexend', sans-serif;
+            background-color: var(--color-2);
+            color: var(--color-4);
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        #total {
+            font-size: 1.2em;
+            font-weight: 500;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        #grocery-list {
+            background-color: var(--color-3);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .grocery-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid var(--color-1);
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .grocery-item.removing {
+            animation: fadeOut 0.3s ease-out;
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-10px); }
+        }
+
+        .grocery-item:last-child {
+            border-bottom: none;
+        }
+
+        .grocery-item input {
+            border: none;
+            background-color: transparent;
+            font-family: 'Lexend', sans-serif;
+            color: var(--color-4);
+            transition: background-color 0.3s ease;
+        }
+
+        .grocery-item input:focus {
+            outline: none;
+            background-color: var(--color-2);
+        }
+
+        .delete-btn {
+            cursor: pointer;
+            color: var(--color-4);
+            margin-right: 10px;
+            transition: transform 0.3s ease;
+        }
+
+        .delete-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .item-name {
+            flex-grow: 1;
+        }
+
+        .item-quantity {
+            width: 40px;
+            text-align: center;
+        }
+
+        .item-price {
+            width: 80px;
+            text-align: center;
+        }
+
+        .item-total {
+            width: 80px;
+            text-align: right;
+            font-weight: 500;
+        }
+
+        #add-item {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 56px;
+            height: 56px;
+            margin: 20px auto 0;
+            background-color: var(--color-4);
+            color: var(--color-3);
+            border: none;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+
+        #add-item:hover {
+            background-color: #3a1660;
+            transform: translateY(-2px);
+        }
+
+        #add-item:active {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Shop Total</h1>
+        <div id="total">Total: $0.00</div>
+        <div id="grocery-list"></div>
+        <button id="add-item"><span class="material-icons">add</span></button>
+    </div>
+
+    <script>
+        const groceryList = document.getElementById('grocery-list');
+        const addItemBtn = document.getElementById('add-item');
+        const totalDisplay = document.getElementById('total');
+
+        let items = JSON.parse(localStorage.getItem('groceryItems')) || [];
+
+        function createGroceryItem(item = { name: '', quantity: '', price: '' }) {
+            const itemElement = document.createElement('div');
+            itemElement.classList.add('grocery-item');
+            itemElement.innerHTML = `
+                <span class="material-icons delete-btn">delete</span>
+                <input type="text" class="item-name" placeholder="Item name" value="${item.name}">
+                <input type="text" class="item-quantity" placeholder="Qty" maxlength="2" value="${item.quantity}">
+                <input type="text" class="item-price" placeholder="Price" maxlength="7" value="${item.price}">
+                <span class="item-total">$0.00</span>
+            `;
+
+            const deleteBtn = itemElement.querySelector('.delete-btn');
+            deleteBtn.addEventListener('click', () => {
+                itemElement.classList.add('removing');
+                setTimeout(() => {
+                    groceryList.removeChild(itemElement);
+                    updateTotal();
+                    saveItems();
+                }, 300);
+            });
+
+            const inputs = itemElement.querySelectorAll('input');
+            inputs.forEach(input => {
+                input.addEventListener('input', () => {
+                    updateItemTotal(itemElement);
+                    updateTotal();
+                    saveItems();
+                });
+            });
+
+            groceryList.appendChild(itemElement);
+            updateItemTotal(itemElement);
+            updateTotal();
+        }
+
+        function updateItemTotal(itemElement) {
+            const quantity = parseFloat(itemElement.querySelector('.item-quantity').value) || 0;
+            const price = parseFloat(itemElement.querySelector('.item-price').value) || 0;
+            const total = quantity * price;
+            itemElement.querySelector('.item-total').textContent = `$${total.toFixed(2)}`;
+        }
+
+        function updateTotal() {
+            const itemTotals = document.querySelectorAll('.item-total');
+            const total = Array.from(itemTotals).reduce((sum, el) => sum + parseFloat(el.textContent.slice(1)), 0);
+            totalDisplay.textContent = `Total: $${total.toFixed(2)}`;
+        }
+
+        function saveItems() {
+            const itemElements = document.querySelectorAll('.grocery-item');
+            items = Array.from(itemElements).map(el => ({
+                name: el.querySelector('.item-name').value,
+                quantity: el.querySelector('.item-quantity').value,
+                price: el.querySelector('.item-price').value
+            }));
+            localStorage.setItem('groceryItems', JSON.stringify(items));
+        }
+
+        addItemBtn.addEventListener('click', () => createGroceryItem());
+
+        // Load saved items
+        items.forEach(createGroceryItem);
+    </script>
+</body>
+</html>
